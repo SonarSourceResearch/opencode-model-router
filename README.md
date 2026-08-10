@@ -62,9 +62,9 @@ selected tier or fallback error to OpenCode's log under the
 `opencode-model-router` service. Request logs contain the user's bounded prompt
 text, but never request headers or environment-backed credentials.
 
-Set `diagnostics.echo` to `true` in the plugin options to print the same
-structured entries to the terminal. This includes the bounded user prompt and
-raw judge response.
+Set `diagnostics.echo` to `true` in the plugin options for concise terminal
+summaries. Interactive OpenCode displays native toasts; `opencode run` prints
+one-line messages to stderr. Full requests and raw responses remain in the log.
 
 Plugin options accept a custom judge, trigger, tier list, and fallback:
 

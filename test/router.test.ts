@@ -8,6 +8,7 @@ import {
   buildJudgePrompt,
   buildJudgeSchema,
   createChatMessageHook,
+  formatTerminalLog,
   humanText,
   resolveOptions,
   type ModelTarget,
@@ -119,6 +120,33 @@ describe("validation", () => {
 })
 
 describe("routing", () => {
+  test("formats concise terminal diagnostics", () => {
+    expect(
+      formatTerminalLog({
+        level: "info",
+        message: "judge request",
+        extra: { body: { model: "Qwen3.6-Sonar", input: "hello" } },
+      }),
+    ).toBe("Judge request → Qwen3.6-Sonar · 5 chars")
+    expect(
+      formatTerminalLog({
+        level: "info",
+        message: "judge response",
+        extra: {
+          status: 200,
+          body: { output: [{ content: [{ type: "output_text", text: '{\"tier\":\"easy\"}' }] }] },
+        },
+      }),
+    ).toBe('Judge response ← HTTP 200 · {"tier":"easy"}')
+    expect(
+      formatTerminalLog({
+        level: "info",
+        message: "judge selected tier",
+        extra: { tier: "complex", target: { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" } },
+      }),
+    ).toBe("Route selected: complex → portkey/gpt-5.6-sol/high")
+  })
+
   test("routes to the tier returned by one Responses API call", async () => {
     const calls: Array<{ url: string; body: Record<string, unknown> }> = []
     const logs: RouterLogEntry[] = []

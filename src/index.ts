@@ -1,20 +1,43 @@
 import type { Plugin, PluginModule } from "@opencode-ai/plugin"
-import { createChatMessageHook, resolveOptions, type RouterLogEntry, type RouterOptions } from "./router"
+import {
+  createChatMessageHook,
+  formatTerminalLog,
+  resolveOptions,
+  type RouterLogEntry,
+  type RouterOptions,
+} from "./router"
 
 export * from "./router"
 
 const server: Plugin = async (input, rawOptions) => {
   const options = resolveOptions(rawOptions as RouterOptions | undefined)
+  const runCommand = process.argv.includes("run")
   const logger = async (entry: RouterLogEntry) => {
-    if (options.diagnostics.echo) {
-      console.error(`[opencode-model-router] ${JSON.stringify(entry)}`)
-    }
     await input.client.app.log<true>({
       body: {
         service: "opencode-model-router",
         ...entry,
       },
     })
+    if (!options.diagnostics.echo) return
+
+    const message = formatTerminalLog(entry)
+    if (runCommand) {
+      console.error(`[model-router] ${message}`)
+      return
+    }
+
+    const variant = entry.level === "error" ? "error" : entry.level === "warn" ? "warning" : "info"
+    await input.client.tui
+      .showToast<true>({
+        body: {
+          title: "Model router",
+          message,
+          variant,
+          duration: entry.level === "warn" || entry.level === "error" ? 5_000 : 2_500,
+        },
+      })
+      .catch(() => undefined)
   }
   return { "chat.message": createChatMessageHook(options, globalThis.fetch, logger) }
 }

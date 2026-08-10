@@ -93,6 +93,32 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error)
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {}
+}
+
+export function formatTerminalLog(entry: RouterLogEntry): string {
+  const extra = record(entry.extra)
+  if (entry.message === "judge request") {
+    const body = record(extra.body)
+    const input = typeof body.input === "string" ? body.input : ""
+    return `Judge request → ${String(body.model ?? "unknown model")} · ${input.length} chars`
+  }
+  if (entry.message === "judge response") {
+    const output = responseText(extra.body)
+    return `Judge response ← HTTP ${String(extra.status ?? "unknown")} · ${output ?? "no output_text"}`
+  }
+  if (entry.message === "judge selected tier") {
+    const target = record(extra.target)
+    return `Route selected: ${String(extra.tier)} → ${String(target.providerID)}/${String(target.modelID)}${target.variant ? `/${String(target.variant)}` : ""}`
+  }
+  if (entry.message === "judge failed; using fallback tier") {
+    const target = record(extra.target)
+    return `Route fallback: ${String(extra.tier)} → ${String(target.providerID)}/${String(target.modelID)} · ${String(extra.error)}`
+  }
+  return entry.message
+}
+
 function requireNonEmpty(value: string, path: string): void {
   if (value.trim().length === 0) throw new Error(`${path} must be a non-empty string`)
 }
