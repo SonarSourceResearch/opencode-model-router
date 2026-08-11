@@ -81,12 +81,133 @@
     a:hover { text-decoration: underline; }
     ul { margin-left: 1.5rem; margin-top: 0.5rem; }
     li { margin-bottom: 0.3rem; }
+    .routing-diagram {
+      margin: 1rem 0 2rem;
+      padding: 1.5rem;
+      background: #f4f8fb;
+      border: 1px solid #dce6ee;
+      border-radius: 8px;
+    }
+    .routing-diagram figcaption {
+      margin-bottom: 1.25rem;
+      color: #52606d;
+      text-align: center;
+    }
+    .route-map {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 100px minmax(0, 1fr);
+      grid-template-rows: repeat(2, auto);
+      gap: 0.8rem 0.5rem;
+      align-items: center;
+    }
+    .route-harness,
+    .route-model {
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #c9d6df;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(44, 62, 80, 0.08);
+    }
+    .route-harness {
+      grid-row: 1 / span 2;
+      align-self: stretch;
+      border-left: 4px solid #3498db;
+    }
+    .route-harness h3,
+    .route-model h3 {
+      margin-bottom: 0.65rem;
+      color: #1f2d3d;
+      font-size: 1rem;
+    }
+    .harness-step {
+      padding: 0.7rem;
+      background: #f7fafc;
+      border: 1px solid #dce6ee;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .harness-step strong,
+    .route-model strong {
+      display: block;
+      color: #1f2d3d;
+    }
+    .route-kicker {
+      display: block;
+      margin-bottom: 0.2rem;
+      color: #5f6c7b;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .harness-arrow {
+      color: #3498db;
+      font-size: 1.25rem;
+      font-weight: bold;
+      line-height: 1.8rem;
+      text-align: center;
+    }
+    .route-link {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: #3498db;
+      font-weight: bold;
+    }
+    .route-link::after {
+      content: "";
+      order: 2;
+      flex: 1;
+      min-width: 1rem;
+      border-top: 2px solid currentColor;
+    }
+    .route-link-arrow {
+      order: 3;
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+    .route-link-complex { color: #7655b5; }
+    .route-model {
+      min-width: 0;
+      border-left-width: 4px;
+    }
+    .route-model p,
+    .route-note {
+      margin-top: 0.4rem;
+      color: #52606d;
+      font-size: 0.84rem;
+      line-height: 1.4;
+    }
+    .route-model-easy { border-left-color: #27896d; }
+    .route-model-complex { border-left-color: #7655b5; }
+    .route-note {
+      margin-top: 1rem;
+      padding-top: 0.8rem;
+      border-top: 1px dashed #b9c8d3;
+      text-align: center;
+    }
     .footer {
       margin-top: 2rem;
       padding-top: 1rem;
       border-top: 1px solid #eee;
       color: #999;
       font-size: 0.85em;
+    }
+    @media (max-width: 640px) {
+      body { padding: 0.75rem; }
+      .container { padding: 1.25rem; }
+      .routing-diagram { padding: 1rem; }
+      .route-map {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+      .route-harness { grid-row: auto; }
+      .route-link {
+        justify-content: center;
+        padding: 0.2rem 0;
+      }
+      .route-link::after { display: none; }
+      .route-link-arrow { transform: rotate(90deg); }
     }
   </style>
 </head>
@@ -101,6 +222,7 @@
       <li>Access to the required model APIs (Qwen, GPT via Portkey)</li>
       <li>An active AWS SSO session (<code>aws sso login</code>) for the Qwen3.6-Sonar dogfooding model</li>
       <li><code>PORTKEY_OPENAI_API_KEY</code> environment variable configured</li>
+      <li>Authenticated access to the Repox npm registry</li>
     </ul>
 
     <h2>Step 1: Copy the Plugin Source</h2>
@@ -114,7 +236,11 @@ cd opencode-model-router</code></pre>
     <h2>Step 2: Install Dependencies</h2>
     <div class="step">
       <span class="step-number">2</span>
-      Install the required dependencies using Bun:
+      Verify that npm can authenticate with Repox:
+      <pre><code>npm ping --registry=https://repox.jfrog.io/artifactory/api/npm/npm</code></pre>
+      If the command returns an authentication error, log in to Repox and retry it:
+      <pre><code>npm login --registry=https://repox.jfrog.io/artifactory/api/npm/npm</code></pre>
+      Then install the required dependencies using Bun:
       <pre><code>cd opencode-model-router
 bun install</code></pre>
     </div>
@@ -180,6 +306,53 @@ bun install</code></pre>
         <li><strong>Errors/timeouts</strong> → fallback to complex tier</li>
       </ul>
     </div>
+
+    <h2>How Routing Works</h2>
+    <figure class="routing-diagram" aria-labelledby="routing-caption">
+      <figcaption id="routing-caption">
+        The OpenCode harness classifies each new prompt, then hands the full agent turn to one worker model.
+      </figcaption>
+      <div class="route-map">
+        <section class="route-harness" aria-label="OpenCode harness">
+          <span class="route-kicker">Left side</span>
+          <h3>OpenCode harness</h3>
+          <div class="harness-step">
+            <span class="route-kicker">Trigger</span>
+            <strong>Human prompt</strong>
+            <code>model-router/auto</code>
+          </div>
+          <div class="harness-arrow" aria-hidden="true">&darr;</div>
+          <div class="harness-step">
+            <span class="route-kicker">Routing decision</span>
+            <strong>Qwen3.6-Sonar judge</strong>
+            Classifies the task as easy or complex
+          </div>
+        </section>
+        <div class="route-link">
+          <span>Easy</span>
+          <span class="route-link-arrow" aria-hidden="true">&rarr;</span>
+        </div>
+        <article class="route-model route-model-easy">
+          <span class="route-kicker">Right side: Sonar model</span>
+          <h3>Qwen3.6-Sonar</h3>
+          <strong><code>sonarllm-dogfooding</code></strong>
+          <p>Handles routine, well-scoped work.</p>
+        </article>
+        <div class="route-link route-link-complex">
+          <span>Complex or fallback</span>
+          <span class="route-link-arrow" aria-hidden="true">&rarr;</span>
+        </div>
+        <article class="route-model route-model-complex">
+          <span class="route-kicker">Right side: GPT Sol</span>
+          <h3>gpt-5.6-sol</h3>
+          <strong><code>portkey</code> &middot; high variant</strong>
+          <p>Handles broad or accuracy-sensitive work. Judge failures also route here.</p>
+        </article>
+      </div>
+      <div class="route-note">
+        Tool-loop continuations stay with the selected model and are not judged again.
+      </div>
+    </figure>
 
     <h2>Diagnostics</h2>
     <div class="info">
