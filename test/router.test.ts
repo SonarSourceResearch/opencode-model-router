@@ -117,6 +117,11 @@ describe("validation", () => {
     expect(resolveOptions().diagnostics.echo).toBeFalse()
     expect(resolveOptions({ diagnostics: { echo: true } }).diagnostics.echo).toBeTrue()
   })
+
+  test("stays on automatic routing by default", () => {
+    expect(resolveOptions().stayOnAuto).toBeTrue()
+    expect(resolveOptions({ stayOnAuto: false }).stayOnAuto).toBeFalse()
+  })
 })
 
 describe("routing", () => {
@@ -160,9 +165,9 @@ describe("routing", () => {
     })
     await hooks["chat.message"](input(), routed)
 
-    expect(routedModel(routed)).toEqual({ providerID: "qwen", modelID: "Qwen3.6-Sonar", variant: undefined })
+    expect(routedModel(routed)).toEqual({ providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar", variant: undefined })
     expect(calls).toHaveLength(1)
-    expect(calls[0]?.url).toEndWith("/v1/responses")
+    expect(calls[0]?.url).toEndWith("/responses")
     expect(calls[0]?.body).toMatchObject({
       model: "Qwen3.6-Sonar",
       max_output_tokens: DEFAULT_JUDGE_MAX_OUTPUT_TOKENS,
@@ -197,7 +202,7 @@ describe("routing", () => {
     const routed = output("What is 2 + 2?")
     const hooks = createChatMessageHook(resolveOptions(), async () => reasoningJudgeResponse("easy"))
     await hooks["chat.message"](input(), routed)
-    expect(routedModel(routed)).toEqual({ providerID: "qwen", modelID: "Qwen3.6-Sonar", variant: undefined })
+    expect(routedModel(routed)).toEqual({ providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar", variant: undefined })
   })
 
   test("manual model selection bypasses routing", async () => {
@@ -207,7 +212,7 @@ describe("routing", () => {
       called = true
       return judgeResponse("easy")
     })
-    await hooks["chat.message"](input({ providerID: "qwen", modelID: "Qwen3.6-Sonar" }), routed)
+    await hooks["chat.message"](input({ providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar" }), routed)
     expect(called).toBeFalse()
     expect(routed.message.model.providerID).toBe("model-router")
   })
@@ -276,27 +281,14 @@ describe("routing", () => {
     const routed = output()
     const hooks = createChatMessageHook(resolveOptions({ stayOnAuto: false }), async () => judgeResponse("easy"))
     await hooks["chat.message"](input(), routed)
-    expect(routedModel(routed)).toEqual({ providerID: "qwen", modelID: "Qwen3.6-Sonar", variant: undefined })
+    expect(routedModel(routed)).toEqual({ providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar", variant: undefined })
   })
 
-  test("keeps auto model when stayOnAuto is true", async () => {
+  test("routes the current message when stayOnAuto is true", async () => {
     const routed = output()
     const hooks = createChatMessageHook(resolveOptions({ stayOnAuto: true }), async () => judgeResponse("easy"))
     await hooks["chat.message"](input(), routed)
-    expect(routedModel(routed)).toEqual({ providerID: "model-router", modelID: "auto" })
+    expect(routedModel(routed)).toEqual({ providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar", variant: undefined })
   })
 
-  test("resets to auto model on session end when stayOnAuto is true", async () => {
-    const session = { model: { providerID: "qwen", modelID: "Qwen3.6-Sonar" } }
-    const hooks = createChatMessageHook(resolveOptions({ stayOnAuto: true }), async () => judgeResponse("easy"))
-    await hooks["chat.session.end"]({ session })
-    expect(session.model).toEqual({ providerID: "model-router", modelID: "auto" })
-  })
-
-  test("does not reset model on session end when stayOnAuto is false", async () => {
-    const session = { model: { providerID: "qwen", modelID: "Qwen3.6-Sonar" } }
-    const hooks = createChatMessageHook(resolveOptions({ stayOnAuto: false }), async () => judgeResponse("easy"))
-    await hooks["chat.session.end"]({ session })
-    expect(session.model).toEqual({ providerID: "qwen", modelID: "Qwen3.6-Sonar" })
-  })
 })

@@ -6,6 +6,10 @@ const MINIMUM_OPENCODE = [1, 18, 16] as const
 const COMMAND_TIMEOUT_MS = 6 * 60_000
 const projectRoot = resolve(import.meta.dir, "..")
 
+function debug(...args: unknown[]) {
+  console.log("[DEBUG]", ...args)
+}
+
 type CommandResult = {
   stdout: string
   stderr: string
@@ -75,10 +79,10 @@ function isolatedEnvironment(root: string, config: string): Record<string, strin
   }
 }
 
-function config(pluginURL: string, judgeBaseURL: string, qwenBaseURL: string): Record<string, unknown> {
+function config(pluginURL: string, judgeBaseURL: string, dogfoodingBaseURL: string, stayOnAuto = true): Record<string, unknown> {
   return {
     $schema: "https://opencode.ai/config.json",
-    plugin: [[pluginURL, { judge: { baseURL: judgeBaseURL } }]],
+    plugin: [[pluginURL, { judge: { baseURL: judgeBaseURL }, stayOnAuto }]],
     provider: {
       "model-router": {
         npm: "@ai-sdk/openai-compatible",
@@ -86,11 +90,16 @@ function config(pluginURL: string, judgeBaseURL: string, qwenBaseURL: string): R
         options: { baseURL: "http://127.0.0.1:1/v1", apiKey: "unused" },
         models: { auto: { name: "Automatic tier" } },
       },
-      qwen: {
+      "sonarllm-dogfooding": {
         npm: "@ai-sdk/openai-compatible",
-        name: "Qwen Sonar",
-        options: { baseURL: qwenBaseURL, apiKey: "unused" },
-        models: { "Qwen3.6-Sonar": { name: "Qwen3.6-Sonar" } },
+        name: "SonarLLM Dogfooding",
+        options: { baseURL: dogfoodingBaseURL },
+        models: {
+          "Qwen3.6-Sonar": {
+            name: "Qwen3.6-Sonar",
+            limit: { context: 260_000, output: 8_192 },
+          },
+        },
       },
       portkey: {
         npm: "@ai-sdk/openai",
@@ -154,7 +163,9 @@ async function main() {
   invariant(version.exitCode === 0, `could not run OpenCode: ${version.stderr}`)
   invariant(atLeast(version.stdout, MINIMUM_OPENCODE), `OpenCode ${MINIMUM_OPENCODE.join(".")} or newer is required`)
 
-  const qwenBaseURL = (Bun.env.QWEN_BASE_URL ?? "https://llm-eval-lb-dev.aws-dev.sonarsource.com/qwen-sonar/v1").replace(/\/+$/, "")
+  const dogfoodingBaseURL = (
+    Bun.env.SONARLLM_DOGFOODING_BASE_URL ?? "https://sonarllm-dogfooding.aws-dev.sonarsource.com/v1"
+  ).replace(/\/+$/, "")
   const stamp = new Date().toISOString().replaceAll(":", "-")
   const artifacts = join(projectRoot, "artifacts", `e2e-${stamp}`)
   const pluginURL = pathToFileURL(await realpath(join(projectRoot, "src", "index.ts"))).href
@@ -162,6 +173,7 @@ async function main() {
   await mkdir(artifacts, { recursive: true })
 
   async function scenario(name: string, test: () => Promise<void>) {
+    debug("Starting scenario:", name)
     try {
       await test()
       results[name] = { status: "passed" }
@@ -170,27 +182,35 @@ async function main() {
       const message = error instanceof Error ? error.message : String(error)
       results[name] = { status: "failed", error: message }
       console.error(`${name}: failed: ${message}`)
+      debug("Scenario failed:", name, error)
     }
   }
 
-  async function setup(name: string, judgeBaseURL = qwenBaseURL) {
+  async function setup(name: string, judgeBaseURL = dogfoodingBaseURL, stayOnAuto = true) {
     const root = join(artifacts, name)
     const configPath = join(root, "opencode.json")
     const opencodeConfigRoot = join(root, "xdg", "config", "opencode")
+    debug("Setting up scenario:", name, "root:", root)
+    debug("Judge base URL:", judgeBaseURL)
+    debug("stayOnAuto:", stayOnAuto)
     await mkdir(join(root, "home"), { recursive: true })
     await mkdir(join(opencodeConfigRoot, "node_modules"), { recursive: true })
     await Bun.write(
       join(opencodeConfigRoot, "package-lock.json"),
       `${JSON.stringify({ packages: { "": { dependencies: { "@opencode-ai/plugin": "1.18.16" } } } }, null, 2)}\n`,
     )
-    await Bun.write(configPath, `${JSON.stringify(config(pluginURL, judgeBaseURL, qwenBaseURL), null, 2)}\n`)
+    await Bun.write(configPath, `${JSON.stringify(config(pluginURL, judgeBaseURL, dogfoodingBaseURL, stayOnAuto), null, 2)}\n`)
+    debug("Config written to:", configPath)
     return { root, configPath, env: isolatedEnvironment(root, configPath) }
   }
 
   async function run(name: string, env: Record<string, string>, args: string[]) {
-    const result = await command(["opencode", "run", "--format", "json", "--agent", "plan", ...args], { env })
+    const cmd = ["opencode", "run", "--format", "json", "--agent", "plan", ...args]
+    debug("Running command:", name, cmd.join(" "))
+    const result = await command(cmd, { env })
     await Bun.write(join(artifacts, `${name}.stdout.jsonl`), result.stdout)
     await Bun.write(join(artifacts, `${name}.stderr.log`), result.stderr)
+    debug("Command exit code:", result.exitCode, "stdout length:", result.stdout.length, "stderr length:", result.stderr.length)
     invariant(result.exitCode === 0, `${name} failed (see ${artifacts})`)
     return result
   }
@@ -209,7 +229,7 @@ async function main() {
     const easyRun = await run("01-easy", normal.env, ["--model", "model-router/auto", "Reply with a brief greeting."])
     easySession = sessionID(easyRun)
     const easyExport = await exported("01-easy", normal.env, easySession)
-    assertTurn(easyExport, 0, { providerID: "qwen", modelID: "Qwen3.6-Sonar" }, false)
+    assertTurn(easyExport, 0, { providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar" }, false)
   })
 
   const complexPrompt =
@@ -225,7 +245,7 @@ async function main() {
     await run("03-continuation", normal.env, ["--session", easySession, complexPrompt])
     const continuedExport = await exported("03-continuation", normal.env, easySession)
     assertTurn(continuedExport, 1, { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" }, true)
-    assertTurn(continuedExport, 0, { providerID: "qwen", modelID: "Qwen3.6-Sonar" }, false)
+    assertTurn(continuedExport, 0, { providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar" }, false)
   })
 
   const fallback = await setup("fallback", "http://127.0.0.1:1/v1")
@@ -233,6 +253,16 @@ async function main() {
     const fallbackRun = await run("04-fallback", fallback.env, ["--model", "model-router/auto", "Reply with one sentence."])
     const fallbackExport = await exported("04-fallback", fallback.env, sessionID(fallbackRun))
     assertTurn(fallbackExport, 0, { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" }, false)
+  })
+
+  const stayOnAutoConfig = await setup("stayOnAuto", dogfoodingBaseURL, true)
+  await scenario("autoMode", async () => {
+    const autoRun = await run("05-auto-stayon", stayOnAutoConfig.env, ["--model", "model-router/auto", "Write a simple 'Hello, World!' program in Python."])
+    const autoSession = sessionID(autoRun)
+    await run("06-auto-continuation", stayOnAutoConfig.env, ["--session", autoSession, complexPrompt])
+    const autoExport = await exported("06-auto-continuation", stayOnAutoConfig.env, autoSession)
+    assertTurn(autoExport, 0, { providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar" }, false)
+    assertTurn(autoExport, 1, { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" }, true)
   })
 
   await Bun.write(

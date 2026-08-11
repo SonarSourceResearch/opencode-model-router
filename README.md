@@ -7,7 +7,7 @@ continuations remain on the selected model without another judge request.
 The defaults are:
 
 - `model-router/auto` as the trigger model
-- `easy` → `qwen/Qwen3.6-Sonar`
+- `easy` → `sonarllm-dogfooding/Qwen3.6-Sonar`
 - `complex` → `portkey/gpt-5.6-sol`, variant `high`
 - judge errors, timeouts, and invalid responses → `complex`
 
@@ -21,7 +21,7 @@ credential.
 {
   "plugin": [
     ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
-      "stayOnAuto": true
+      "diagnostics": { "echo": true }
     }]
   ],
   "provider": {
@@ -30,13 +30,18 @@ credential.
       "options": { "baseURL": "http://127.0.0.1:1/v1", "apiKey": "unused" },
       "models": { "auto": { "name": "Automatic tier" } }
     },
-    "qwen": {
+    "sonarllm-dogfooding": {
       "npm": "@ai-sdk/openai-compatible",
+      "name": "SonarLLM Dogfooding",
       "options": {
-        "baseURL": "https://llm-eval-lb-dev.aws-dev.sonarsource.com/qwen-sonar/v1",
-        "apiKey": "unused"
+        "baseURL": "https://sonarllm-dogfooding.aws-dev.sonarsource.com/v1"
       },
-      "models": { "Qwen3.6-Sonar": { "name": "Qwen3.6-Sonar" } }
+      "models": {
+        "Qwen3.6-Sonar": {
+          "name": "Qwen3.6-Sonar",
+          "limit": { "context": 260000, "output": 8192 }
+        }
+      }
     },
     "portkey": {
       "npm": "@ai-sdk/openai",
@@ -68,10 +73,11 @@ Set `diagnostics.echo` to `true` in the plugin options for concise terminal
 summaries. Interactive OpenCode displays native toasts; `opencode run` prints
 one-line messages to stderr. Full requests and raw responses remain in the log.
 
-### Enabling `stayOnAuto`
+### Automatic mode
 
-By default, the plugin switches the active model to the selected tier after routing.
-To keep the active model on `model-router/auto` for subsequent prompts, set `stayOnAuto` to `true`:
+`stayOnAuto` defaults to `true`. The selected tier handles the current turn,
+while subsequent prompts remain on `model-router/auto` and receive a fresh
+routing decision. It can be made explicit when needed:
 
 ```json
 {
@@ -83,13 +89,8 @@ To keep the active model on `model-router/auto` for subsequent prompts, set `sta
 }
 ```
 
-When `stayOnAuto` is enabled, the plugin will automatically switch back to
-`model-router/auto` at the end of each session, allowing the router to make a
-fresh routing decision for the next user prompt.
-
 Plugin options accept a custom judge, trigger, tier list, and fallback:
 
-Plugin options accept a custom judge, trigger, tier list, and fallback:
 ## Verification
 
 ```bash

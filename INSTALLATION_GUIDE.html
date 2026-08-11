@@ -132,13 +132,18 @@ bun install</code></pre>
       "options": { "baseURL": "http://127.0.0.1:1/v1", "apiKey": "unused" },
       "models": { "auto": { "name": "Automatic tier" } }
     },
-    "qwen": {
+    "sonarllm-dogfooding": {
       "npm": "@ai-sdk/openai-compatible",
+      "name": "SonarLLM Dogfooding",
       "options": {
-        "baseURL": "https://llm-eval-lb-dev.aws-dev.sonarsource.com/qwen-sonar/v1",
-        "apiKey": "unused"
+        "baseURL": "https://sonarllm-dogfooding.aws-dev.sonarsource.com/v1"
       },
-      "models": { "Qwen3.6-Sonar": { "name": "Qwen3.6-Sonar" } }
+      "models": {
+        "Qwen3.6-Sonar": {
+          "name": "Qwen3.6-Sonar",
+          "limit": { "context": 260000, "output": 8192 }
+        }
+      }
     },
     "portkey": {
       "npm": "@ai-sdk/openai",
@@ -167,7 +172,7 @@ bun install</code></pre>
       <span class="step-number">4</span>
       Restart OpenCode. In the model selector, choose <code>model-router/auto</code> to enable automatic tiered routing.
       <ul>
-        <li><strong>Easy prompts</strong> → routed to <code>qwen/Qwen3.6-Sonar</code></li>
+        <li><strong>Easy prompts</strong> → routed to <code>sonarllm-dogfooding/Qwen3.6-Sonar</code></li>
         <li><strong>Complex prompts</strong> → routed to <code>portkey/gpt-5.6-sol</code> (high variant)</li>
         <li><strong>Errors/timeouts</strong> → fallback to complex tier</li>
       </ul>
@@ -194,7 +199,7 @@ bun install</code></pre>
       {
         "id": "easy",
         "description": "Simple questions",
-        "target": { "providerID": "qwen", "modelID": "Qwen3.6-Sonar" }
+        "target": { "providerID": "sonarllm-dogfooding", "modelID": "Qwen3.6-Sonar" }
       },
       {
         "id": "complex",

@@ -1,7 +1,28 @@
 {
+  "$schema": "https://opencode.ai/config.json",
   "plugin": [
     ["file:///Users/yosuke.asai/ghq/github.com/SonarSource/opencode-model-router/src/index.ts", {
-      "stayOnAuto": true
+      "diagnostics": {
+        "echo": true
+      }
     }]
-  ]
+  ],
+  "provider": {
+    "sonarllm-dogfooding": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "SonarLLM Dogfooding",
+      "options": {
+        "baseURL": "https://sonarllm-dogfooding.aws-dev.sonarsource.com/v1"
+      },
+      "models": {
+        "Qwen3.6-Sonar": {
+          "name": "Qwen3.6-Sonar",
+          "limit": {
+            "context": 260000,
+            "output": 8192
+          }
+        }
+      }
+    }
+  }
 }
