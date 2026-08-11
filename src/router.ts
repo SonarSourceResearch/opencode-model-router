@@ -24,6 +24,12 @@ export type RouterOptions = {
   diagnostics?: {
     echo?: boolean
   }
+  /**
+   * If true, the plugin will not switch the active model after routing.
+   * This allows the user to stay on the "auto" model for subsequent prompts.
+   * @default false
+   */
+  stayOnAuto?: boolean
 }
 
 export type ResolvedRouterOptions = {
@@ -38,6 +44,7 @@ export type ResolvedRouterOptions = {
   diagnostics: {
     echo: boolean
   }
+  stayOnAuto: boolean
 }
 
 export const DEFAULT_TIERS: Tier[] = [
@@ -170,7 +177,9 @@ export function resolveOptions(options: RouterOptions = {}): ResolvedRouterOptio
   }
   const diagnostics = { echo: options.diagnostics?.echo ?? false }
 
-  return { judge, trigger, tiers, fallbackTier, diagnostics }
+  const stayOnAuto = options.stayOnAuto ?? false
+
+  return { judge, trigger, tiers, fallbackTier, diagnostics, stayOnAuto }
 }
 
 export function buildJudgeSchema(tiers: Tier[]): Record<string, unknown> {
@@ -313,6 +322,7 @@ export function createChatMessageHook(
   logger?: RouterLogger,
 ): ChatMessageHook {
   const fallback = options.tiers.find((tier) => tier.id === options.fallbackTier)!
+  const stayOnAuto = options.stayOnAuto
 
   return async (input: ChatMessageInput, output: ChatMessageOutput) => {
     if (!sameTarget(input.model ?? output.message.model, options.trigger)) return
@@ -344,10 +354,12 @@ export function createChatMessageHook(
       })
     }
 
-    Object.assign(output.message.model, {
-      providerID: selected.target.providerID,
-      modelID: selected.target.modelID,
-      variant: selected.target.variant,
-    })
+    if (!stayOnAuto) {
+      Object.assign(output.message.model, {
+        providerID: selected.target.providerID,
+        modelID: selected.target.modelID,
+        variant: selected.target.variant,
+      })
+    }
   }
 }

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install opencode-model-router Plugin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 2rem;
+    }
+    h1 { margin-bottom: 0.5rem; color: #1a1a1a; }
+    .subtitle { color: #666; margin-bottom: 1.5rem; }
+    h2 { margin-top: 2rem; margin-bottom: 0.5rem; color: #2c3e50; }
+    .step {
+      background: #f8f9fa;
+      border-left: 4px solid #3498db;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    .step-number {
+      font-weight: bold;
+      color: #3498db;
+      margin-right: 0.5rem;
+    }
+    code {
+      background: #f0f0f0;
+      padding: 0.15em 0.4em;
+      border-radius: 3px;
+      font-size: 0.9em;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    pre {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85em;
+      line-height: 1.5;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    .warning::before {
+      content: "⚠️ ";
+    }
+    .info {
+      background: #d1ecf1;
+      border-left: 4px solid #17a2b8;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    .info::before {
+      content: "ℹ️ ";
+    }
+    a { color: #3498db; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul { margin-left: 1.5rem; margin-top: 0.5rem; }
+    li { margin-bottom: 0.3rem; }
+    .footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+      color: #999;
+      font-size: 0.85em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>opencode-model-router Plugin Installation Guide</h1>
+    <p class="subtitle">Route prompts to the least capable model tier automatically</p>
+
+    <h2>Prerequisites</h2>
+    <ul>
+      <li>OpenCode 1.18.16 or newer</li>
+      <li>Access to the required model APIs (Qwen, GPT via Portkey)</li>
+      <li><code>PORTKEY_OPENAI_API_KEY</code> environment variable configured</li>
+    </ul>
+
+    <h2>Step 1: Copy the Plugin Source</h2>
+    <div class="step">
+      <span class="step-number">1</span>
+      Clone or copy the plugin source to a permanent location on your machine:
+      <pre><code>git clone https://github.com/SonarSource/opencode-model-router.git
+cd opencode-model-router</code></pre>
+    </div>
+
+    <h2>Step 2: Install Dependencies</h2>
+    <div class="step">
+      <span class="step-number">2</span>
+      Install the required dependencies using Bun:
+      <pre><code>cd opencode-model-router
+bun install</code></pre>
+    </div>
+
+    <h2>Step 3: Configure OpenCode</h2>
+    <div class="step">
+      <span class="step-number">3</span>
+      Open your <code>opencode.json</code> configuration file and add the plugin reference and providers:
+      <pre><code>{
+  "plugin": [
+    ["file:///absolute/path/to/opencode-model-router/src/index.ts", {}]
+  ],
+  "provider": {
+    "model-router": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": { "baseURL": "http://127.0.0.1:1/v1", "apiKey": "unused" },
+      "models": { "auto": { "name": "Automatic tier" } }
+    },
+    "qwen": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://llm-eval-lb-dev.aws-dev.sonarsource.com/qwen-sonar/v1",
+        "apiKey": "unused"
+      },
+      "models": { "Qwen3.6-Sonar": { "name": "Qwen3.6-Sonar" } }
+    },
+    "portkey": {
+      "npm": "@ai-sdk/openai",
+      "options": {
+        "baseURL": "https://api.portkey.ai/v1",
+        "apiKey": "{env:PORTKEY_OPENAI_API_KEY}"
+      },
+      "models": {
+        "gpt-5.6-sol": {
+          "name": "gpt-5.6-sol",
+          "reasoning": true,
+          "variants": { "high": { "reasoningEffort": "high" } }
+        }
+      }
+    }
+  }
+}</code></pre>
+    </div>
+
+    <div class="warning">
+      Replace <code>/absolute/path/to/opencode-model-router/src/index.ts</code> with the actual absolute path where you cloned the plugin.
+    </div>
+
+    <h2>Step 4: Use the Plugin</h2>
+    <div class="step">
+      <span class="step-number">4</span>
+      Restart OpenCode. In the model selector, choose <code>model-router/auto</code> to enable automatic tiered routing.
+      <ul>
+        <li><strong>Easy prompts</strong> → routed to <code>qwen/Qwen3.6-Sonar</code></li>
+        <li><strong>Complex prompts</strong> → routed to <code>portkey/gpt-5.6-sol</code> (high variant)</li>
+        <li><strong>Errors/timeouts</strong> → fallback to complex tier</li>
+      </ul>
+    </div>
+
+    <h2>Optional: Enable Diagnostics</h2>
+    <div class="info">
+      Add <code>"diagnostics": { "echo": true }</code> to the plugin options for terminal summaries:
+      <pre><code>"plugin": [
+  ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
+    "diagnostics": { "echo": true }
+  }]
+]</code></pre>
+    </div>
+
+    <h2>Customizing Tiers</h2>
+    <div class="info">
+      You can customize the judge model, trigger model, tier definitions, and fallback tier:
+      <pre><code>"plugin": [
+  ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
+    "judge": { "baseURL": "...", "model": "...", "timeoutMs": 5000 },
+    "trigger": { "providerID": "model-router", "modelID": "auto" },
+    "tiers": [
+      {
+        "id": "easy",
+        "description": "Simple questions",
+        "target": { "providerID": "qwen", "modelID": "Qwen3.6-Sonar" }
+      },
+      {
+        "id": "complex",
+        "description": "Complex reasoning",
+        "target": { "providerID": "portkey", "modelID": "gpt-5.6-sol", "variant": "high" }
+      }
+    ],
+    "fallbackTier": "complex"
+  }]
+]</code></pre>
+    </div>
+
+    <div class="footer">
+      <p>For questions or support, contact the AI Platform team.</p>
+    </div>
+  </div>
+</body>
+</html>
