@@ -117,11 +117,6 @@ describe("validation", () => {
     expect(resolveOptions().diagnostics.echo).toBeFalse()
     expect(resolveOptions({ diagnostics: { echo: true } }).diagnostics.echo).toBeTrue()
   })
-
-  test("stays on automatic routing by default", () => {
-    expect(resolveOptions().stayOnAuto).toBeTrue()
-    expect(resolveOptions({ stayOnAuto: false }).stayOnAuto).toBeFalse()
-  })
 })
 
 describe("routing", () => {
@@ -283,19 +278,4 @@ describe("routing", () => {
     expect(humanText(routed)).toHaveLength(MAX_TASK_CHARACTERS)
     expect(humanText(routed)).not.toContain("secret")
   })
-
-  test("switches to target model when stayOnAuto is false", async () => {
-    const routed = output()
-    const hooks = createChatMessageHook(resolveOptions({ stayOnAuto: false }), async () => judgeResponse("easy"))
-    await hooks["chat.message"](input(), routed)
-    expect(routedModel(routed)).toEqual({ providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar", variant: undefined })
-  })
-
-  test("routes the current message when stayOnAuto is true", async () => {
-    const routed = output()
-    const hooks = createChatMessageHook(resolveOptions({ stayOnAuto: true }), async () => judgeResponse("easy"))
-    await hooks["chat.message"](input(), routed)
-    expect(routedModel(routed)).toEqual({ providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar", variant: undefined })
-  })
-
 })

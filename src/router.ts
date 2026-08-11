@@ -24,11 +24,6 @@ export type RouterOptions = {
   diagnostics?: {
     echo?: boolean
   }
-  /**
-   * Keep the automatic trigger selected for subsequent prompts.
-   * @default true
-   */
-  stayOnAuto?: boolean
 }
 
 export type ResolvedRouterOptions = {
@@ -43,7 +38,6 @@ export type ResolvedRouterOptions = {
   diagnostics: {
     echo: boolean
   }
-  stayOnAuto: boolean
 }
 
 export const DEFAULT_TIERS: Tier[] = [
@@ -176,9 +170,7 @@ export function resolveOptions(options: RouterOptions = {}): ResolvedRouterOptio
   }
   const diagnostics = { echo: options.diagnostics?.echo ?? false }
 
-  const stayOnAuto = options.stayOnAuto ?? true
-
-  return { judge, trigger, tiers, fallbackTier, diagnostics, stayOnAuto }
+  return { judge, trigger, tiers, fallbackTier, diagnostics }
 }
 
 export function buildJudgeSchema(tiers: Tier[]): Record<string, unknown> {

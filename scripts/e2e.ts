@@ -79,10 +79,10 @@ function isolatedEnvironment(root: string, config: string): Record<string, strin
   }
 }
 
-function config(pluginURL: string, judgeBaseURL: string, dogfoodingBaseURL: string, stayOnAuto = true): Record<string, unknown> {
+function config(pluginURL: string, judgeBaseURL: string, dogfoodingBaseURL: string): Record<string, unknown> {
   return {
     $schema: "https://opencode.ai/config.json",
-    plugin: [[pluginURL, { judge: { baseURL: judgeBaseURL }, diagnostics: { echo: true }, stayOnAuto }]],
+    plugin: [[pluginURL, { judge: { baseURL: judgeBaseURL }, diagnostics: { echo: true } }]],
     provider: {
       "model-router": {
         npm: "@ai-sdk/openai-compatible",
@@ -186,20 +186,19 @@ async function main() {
     }
   }
 
-  async function setup(name: string, judgeBaseURL = dogfoodingBaseURL, stayOnAuto = true) {
+  async function setup(name: string, judgeBaseURL = dogfoodingBaseURL) {
     const root = join(artifacts, name)
     const configPath = join(root, "opencode.json")
     const opencodeConfigRoot = join(root, "xdg", "config", "opencode")
     debug("Setting up scenario:", name, "root:", root)
     debug("Judge base URL:", judgeBaseURL)
-    debug("stayOnAuto:", stayOnAuto)
     await mkdir(join(root, "home"), { recursive: true })
     await mkdir(join(opencodeConfigRoot, "node_modules"), { recursive: true })
     await Bun.write(
       join(opencodeConfigRoot, "package-lock.json"),
       `${JSON.stringify({ packages: { "": { dependencies: { "@opencode-ai/plugin": "1.18.16" } } } }, null, 2)}\n`,
     )
-    await Bun.write(configPath, `${JSON.stringify(config(pluginURL, judgeBaseURL, dogfoodingBaseURL, stayOnAuto), null, 2)}\n`)
+    await Bun.write(configPath, `${JSON.stringify(config(pluginURL, judgeBaseURL, dogfoodingBaseURL), null, 2)}\n`)
     debug("Config written to:", configPath)
     return { root, configPath, env: isolatedEnvironment(root, configPath) }
   }
@@ -253,16 +252,6 @@ async function main() {
     const fallbackRun = await run("04-fallback", fallback.env, ["--model", "model-router/auto", "Reply with one sentence."])
     const fallbackExport = await exported("04-fallback", fallback.env, sessionID(fallbackRun))
     assertTurn(fallbackExport, 0, { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" }, false)
-  })
-
-  const stayOnAutoConfig = await setup("stayOnAuto", dogfoodingBaseURL, true)
-  await scenario("autoMode", async () => {
-    const autoRun = await run("05-auto-stayon", stayOnAutoConfig.env, ["--model", "model-router/auto", "Write a simple 'Hello, World!' program in Python."])
-    const autoSession = sessionID(autoRun)
-    await run("06-auto-continuation", stayOnAutoConfig.env, ["--session", autoSession, complexPrompt])
-    const autoExport = await exported("06-auto-continuation", stayOnAutoConfig.env, autoSession)
-    assertTurn(autoExport, 0, { providerID: "sonarllm-dogfooding", modelID: "Qwen3.6-Sonar" }, false)
-    assertTurn(autoExport, 1, { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" }, true)
   })
 
   await Bun.write(

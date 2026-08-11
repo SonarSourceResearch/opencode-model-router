@@ -80,19 +80,8 @@ one-line messages to stderr. Full requests and raw responses remain in the log.
 
 ### Automatic mode
 
-`stayOnAuto` defaults to `true`. The selected tier handles the current turn,
-while subsequent prompts remain on `model-router/auto` and receive a fresh
-routing decision. It can be made explicit when needed:
-
-```json
-{
-  "plugin": [
-    ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
-      "stayOnAuto": true
-    }]
-  ]
-}
-```
+The selected tier handles the current turn, while subsequent prompts remain on
+`model-router/auto` and receive a fresh routing decision.
 
 Plugin options accept a custom judge, trigger, tier list, and fallback:
 
