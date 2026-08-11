@@ -39,7 +39,7 @@ const server: Plugin = async (input, rawOptions) => {
       })
       .catch(() => undefined)
   }
-  return { "chat.message": createChatMessageHook(options, globalThis.fetch, logger) }
+  return { ...createChatMessageHook(options, globalThis.fetch, logger) }
 }
 
 const plugin: PluginModule = {

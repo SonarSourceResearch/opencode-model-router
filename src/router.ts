@@ -27,9 +27,24 @@ export type RouterOptions = {
   /**
    * If true, the plugin will not switch the active model after routing.
    * This allows the user to stay on the "auto" model for subsequent prompts.
-   * @default true
+   * @default false
    */
   stayOnAuto?: boolean
+}
+
+export type ResolvedRouterOptions = {
+  judge: {
+    baseURL: string
+    model: string
+    timeoutMs: number
+  }
+  trigger: ModelTarget
+  tiers: Tier[]
+  fallbackTier: string
+  diagnostics: {
+    echo: boolean
+  }
+  stayOnAuto: boolean
 }
 
 export type ResolvedRouterOptions = {
@@ -177,7 +192,7 @@ export function resolveOptions(options: RouterOptions = {}): ResolvedRouterOptio
   }
   const diagnostics = { echo: options.diagnostics?.echo ?? false }
 
-  const stayOnAuto = options.stayOnAuto ?? true
+  const stayOnAuto = options.stayOnAuto ?? false
 
   return { judge, trigger, tiers, fallbackTier, diagnostics, stayOnAuto }
 }
@@ -304,6 +319,8 @@ function sameTarget(left: ModelTarget | undefined, right: ModelTarget): boolean 
 type ChatMessageHook = NonNullable<Hooks["chat.message"]>
 type ChatMessageInput = Parameters<ChatMessageHook>[0]
 type ChatMessageOutput = Parameters<ChatMessageHook>[1]
+type SessionEndHook = NonNullable<Hooks["chat.session.end"]>
+type SessionEndInput = Parameters<SessionEndHook>[0]
 
 export function humanText(output: ChatMessageOutput): string {
   return output.parts
@@ -320,11 +337,11 @@ export function createChatMessageHook(
   options: ResolvedRouterOptions,
   fetchImpl: Fetch = globalThis.fetch,
   logger?: RouterLogger,
-): ChatMessageHook {
+): { "chat.message": ChatMessageHook; "chat.session.end": SessionEndHook } {
   const fallback = options.tiers.find((tier) => tier.id === options.fallbackTier)!
   const stayOnAuto = options.stayOnAuto
 
-  return async (input: ChatMessageInput, output: ChatMessageOutput) => {
+  const messageHandler: ChatMessageHook = async (input: ChatMessageInput, output: ChatMessageOutput) => {
     if (!sameTarget(input.model ?? output.message.model, options.trigger)) return
     const task = humanText(output)
     if (task.length === 0) return
@@ -362,4 +379,21 @@ export function createChatMessageHook(
       })
     }
   }
+
+  const sessionEndHandler: SessionEndHook = async (input: SessionEndInput) => {
+    if (stayOnAuto) {
+      await writeLog(logger, {
+        level: "info",
+        message: "session end; switching back to auto model",
+        extra: { sessionID: input.sessionID },
+      })
+      input.session.model = {
+        providerID: options.trigger.providerID,
+        modelID: options.trigger.modelID,
+        variant: options.trigger.variant,
+      }
+    }
+  }
+
+  return { "chat.message": messageHandler, "chat.session.end": sessionEndHandler }
 }

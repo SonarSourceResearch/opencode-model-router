@@ -23,23 +23,6 @@ credential.
     ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
       "stayOnAuto": true
     }]
-  ]
-}
-```
-
-When `stayOnAuto` is enabled, the plugin will route prompts to the appropriate tier but will not switch the active model in the UI. This is useful if you want to stay on the `model-router/auto` model to let the router decide for each prompt, rather than switching to the target model (e.g., `qwen/Qwen3.6-Sonar`) after the first routing decision.
-## OpenCode configuration
-
-Reference the plugin from `opencode.json` and define its three providers. The
-Portkey provider intentionally uses `@ai-sdk/openai` and an environment-backed
-credential.
-
-```json
-{
-  "plugin": [
-    ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
-      "stayOnAuto": true
-    }]
   ],
   "provider": {
     "model-router": {
@@ -87,19 +70,24 @@ one-line messages to stderr. Full requests and raw responses remain in the log.
 
 ### Enabling `stayOnAuto`
 
-By default, the plugin routes prompts without switching the active model,
-allowing the `model-router/auto` model to handle subsequent prompts. To switch
-models after routing, set `stayOnAuto` to `false` in the plugin options:
+By default, the plugin switches the active model to the selected tier after routing.
+To keep the active model on `model-router/auto` for subsequent prompts, set `stayOnAuto` to `true`:
 
 ```json
 {
   "plugin": [
     ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
-      "stayOnAuto": false
+      "stayOnAuto": true
     }]
   ]
 }
 ```
+
+When `stayOnAuto` is enabled, the plugin will automatically switch back to
+`model-router/auto` at the end of each session, allowing the router to make a
+fresh routing decision for the next user prompt.
+
+Plugin options accept a custom judge, trigger, tier list, and fallback:
 
 Plugin options accept a custom judge, trigger, tier list, and fallback:
 ## Verification
