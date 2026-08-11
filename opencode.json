@@ -1,0 +1,7 @@
+{
+  "plugin": [
+    ["file:///Users/yosuke.asai/ghq/github.com/SonarSource/opencode-model-router/src/index.ts", {
+      "stayOnAuto": true
+    }]
+  ]
+}
