@@ -87,25 +87,19 @@ one-line messages to stderr. Full requests and raw responses remain in the log.
 
 ### Enabling `stayOnAuto`
 
-By default, the plugin switches the active model to the selected tier after
-routing. To keep the active model on `model-router/auto` for subsequent prompts,
-set `stayOnAuto` to `true`:
+By default, the plugin routes prompts without switching the active model,
+allowing the `model-router/auto` model to handle subsequent prompts. To switch
+models after routing, set `stayOnAuto` to `false` in the plugin options:
 
 ```json
 {
   "plugin": [
     ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
-      "stayOnAuto": true
+      "stayOnAuto": false
     }]
   ]
 }
 ```
-
-When `stayOnAuto` is enabled, the plugin will route prompts to the appropriate
-tier but will not switch the active model in the UI. This is useful if you want
-to stay on the `model-router/auto` model to let the router decide for each
-prompt, rather than switching to the target model (e.g., `qwen/Qwen3.6-Sonar`)
-after the first routing decision.
 
 Plugin options accept a custom judge, trigger, tier list, and fallback:
 ## Verification

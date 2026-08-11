@@ -27,7 +27,7 @@ export type RouterOptions = {
   /**
    * If true, the plugin will not switch the active model after routing.
    * This allows the user to stay on the "auto" model for subsequent prompts.
-   * @default false
+   * @default true
    */
   stayOnAuto?: boolean
 }
@@ -177,7 +177,7 @@ export function resolveOptions(options: RouterOptions = {}): ResolvedRouterOptio
   }
   const diagnostics = { echo: options.diagnostics?.echo ?? false }
 
-  const stayOnAuto = options.stayOnAuto ?? false
+  const stayOnAuto = options.stayOnAuto ?? true
 
   return { judge, trigger, tiers, fallbackTier, diagnostics, stayOnAuto }
 }
