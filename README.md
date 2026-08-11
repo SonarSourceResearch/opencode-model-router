@@ -11,6 +11,10 @@ The defaults are:
 - `complex` → `portkey/gpt-5.6-sol`, variant `high`
 - judge errors, timeouts, and invalid responses → `complex`
 
+## Documentation
+
+- [Model switching risks](docs/model-switching-risks.md)
+
 ## OpenCode configuration
 
 Reference the plugin from `opencode.json` and define its three providers. The
