@@ -82,7 +82,7 @@ function isolatedEnvironment(root: string, config: string): Record<string, strin
 function config(pluginURL: string, judgeBaseURL: string, dogfoodingBaseURL: string, stayOnAuto = true): Record<string, unknown> {
   return {
     $schema: "https://opencode.ai/config.json",
-    plugin: [[pluginURL, { judge: { baseURL: judgeBaseURL }, stayOnAuto }]],
+    plugin: [[pluginURL, { judge: { baseURL: judgeBaseURL }, diagnostics: { echo: true }, stayOnAuto }]],
     provider: {
       "model-router": {
         npm: "@ai-sdk/openai-compatible",

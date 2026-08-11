@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { Hooks } from "@opencode-ai/plugin"
-import plugin from "../src/index"
+import plugin, { shouldShowNotification } from "../src/index"
 import {
   DEFAULT_TIERS,
   DEFAULT_JUDGE_MAX_OUTPUT_TOKENS,
@@ -125,6 +125,13 @@ describe("validation", () => {
 })
 
 describe("routing", () => {
+  test("always shows route decisions", () => {
+    expect(shouldShowNotification({ level: "info", message: "judge selected tier" }, false)).toBeTrue()
+    expect(shouldShowNotification({ level: "warn", message: "judge failed; using fallback tier" }, false)).toBeTrue()
+    expect(shouldShowNotification({ level: "info", message: "judge request" }, false)).toBeFalse()
+    expect(shouldShowNotification({ level: "info", message: "judge request" }, true)).toBeTrue()
+  })
+
   test("formats concise terminal diagnostics", () => {
     expect(
       formatTerminalLog({

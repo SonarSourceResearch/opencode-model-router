@@ -9,6 +9,12 @@ import {
 
 export * from "./router"
 
+export function shouldShowNotification(entry: RouterLogEntry, diagnosticsEcho: boolean): boolean {
+  return (
+    diagnosticsEcho || entry.message === "judge selected tier" || entry.message === "judge failed; using fallback tier"
+  )
+}
+
 const server: Plugin = async (input, rawOptions) => {
   const options = resolveOptions(rawOptions as RouterOptions | undefined)
   const runCommand = process.argv.includes("run")
@@ -19,7 +25,7 @@ const server: Plugin = async (input, rawOptions) => {
         ...entry,
       },
     })
-    if (!options.diagnostics.echo) return
+    if (!shouldShowNotification(entry, options.diagnostics.echo)) return
 
     const message = formatTerminalLog(entry)
     if (runCommand) {

@@ -99,6 +99,7 @@
     <ul>
       <li>OpenCode 1.18.16 or newer</li>
       <li>Access to the required model APIs (Qwen, GPT via Portkey)</li>
+      <li>An active AWS SSO session (<code>aws sso login</code>) for the Qwen3.6-Sonar dogfooding model</li>
       <li><code>PORTKEY_OPENAI_API_KEY</code> environment variable configured</li>
     </ul>
 
@@ -124,7 +125,9 @@ bun install</code></pre>
       Open your <code>opencode.json</code> configuration file and add the plugin reference and providers:
       <pre><code>{
   "plugin": [
-    ["file:///absolute/path/to/opencode-model-router/src/index.ts", {}]
+    ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
+      "diagnostics": { "echo": true }
+    }]
   ],
   "provider": {
     "model-router": {
@@ -178,14 +181,11 @@ bun install</code></pre>
       </ul>
     </div>
 
-    <h2>Optional: Enable Diagnostics</h2>
+    <h2>Diagnostics</h2>
     <div class="info">
-      Add <code>"diagnostics": { "echo": true }</code> to the plugin options for terminal summaries:
-      <pre><code>"plugin": [
-  ["file:///absolute/path/to/opencode-model-router/src/index.ts", {
-    "diagnostics": { "echo": true }
-  }]
-]</code></pre>
+      The default configuration enables concise judge request and response summaries with
+      <code>"diagnostics": { "echo": true }</code>. The selected model or fallback notification
+      is always shown, even when detailed diagnostics are disabled.
     </div>
 
     <h2>Customizing Tiers</h2>
