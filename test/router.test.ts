@@ -184,7 +184,12 @@ describe("routing", () => {
       sessionID: "session",
       body: { model: "Qwen3.6-Sonar", max_output_tokens: DEFAULT_JUDGE_MAX_OUTPUT_TOKENS },
     })
-    expect(logs[1]?.extra).toMatchObject({ status: 200, body: { output: expect.any(Array) } })
+    expect(logs[1]?.extra).toMatchObject({
+      status: 200,
+      body: { output: expect.any(Array) },
+      durationMs: expect.any(Number),
+    })
+    expect(logs[2]?.extra).toMatchObject({ routeDurationMs: expect.any(Number) })
   })
 
   test("routes a dynamic third tier", async () => {
@@ -258,10 +263,11 @@ describe("routing", () => {
       level: "warn",
       message: "judge failed; using fallback tier",
       extra: {
-        error: "Error: offline",
-        tier: "complex",
-        target: { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" },
-      },
+         error: "Error: offline",
+         tier: "complex",
+         target: { providerID: "portkey", modelID: "gpt-5.6-sol", variant: "high" },
+         routeDurationMs: expect.any(Number),
+       },
     })
   })
 

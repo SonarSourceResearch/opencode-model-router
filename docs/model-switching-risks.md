@@ -65,25 +65,32 @@ Routing successive turns to different tiers should therefore be treated as
 potentially losing provider-side cache reuse, not as losing the OpenCode session
 history.
 
-## Data Exposure
-
-Each routed target receives the context OpenCode sends for that turn. A session
-that switches tiers may therefore send conversation content to more than one
-provider. The judge also receives up to 4,000 characters of the current human
-prompt. Provider access, retention, residency, and compliance requirements must
-be evaluated for every configured judge and target.
-
 ## Latency And Cost
 
-Every routed human prompt adds a judge request before target generation. Total
-latency and usage include both requests. Target output limits and reasoning
-effort are controlled by the target provider configuration; the router neither
-normalizes reasoning-token budgets across models nor aggregates token usage.
+Every routed human prompt adds a judge request before target generation. The
+judge performs a single API call to the configured model (default: Qwen3.6-Sonar)
+with approximately 4 KB of input and 512 token output budget. The default timeout
+is 9 seconds.
+
+The router now logs `durationMs` for each judge request in the `judge response`
+log entry, enabling you to collect and analyze actual latency data from your
+deployment. This metric appears alongside the session ID and message ID for
+correlation.
+
+A 12-request benchmark against the default judge endpoint on August 12, 2026,
+after one warm-up request, measured a 637 ms median and 740 ms mean. The observed
+range was 434-1,524 ms, with a 1,343 ms p90. These results are a point-in-time
+measurement from one client location; provider load and network conditions will
+change the added latency.
+
+Total latency and usage include both the judge request and the target model
+generation. Target output limits and reasoning effort are controlled by the target
+provider configuration; the router neither normalizes reasoning-token budgets
+across models nor aggregates token usage.
 
 ## Mitigations
 
 - Configure tiers with compatible context limits and tool support.
-- Keep sensitive sessions on providers approved for the same data classification.
 - Avoid frequent cross-provider switching for long sessions that depend on
   provider-side prefix caching.
 - Persist important conclusions in visible messages or files rather than

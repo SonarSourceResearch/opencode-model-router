@@ -259,6 +259,7 @@ export async function judgeTask(
       message: "judge request",
       extra: { ...context, url, body },
     })
+    const startTime = Date.now()
     const response = await fetchImpl(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -266,6 +267,7 @@ export async function judgeTask(
       signal: controller.signal,
     })
     const raw = await response.text()
+    const durationMs = Date.now() - startTime
     let responseBody: unknown = raw
     try {
       responseBody = JSON.parse(raw)
@@ -273,7 +275,7 @@ export async function judgeTask(
     await writeLog(logger, {
       level: response.ok ? "info" : "warn",
       message: "judge response",
-      extra: { ...context, status: response.status, body: responseBody },
+      extra: { ...context, status: response.status, body: responseBody, durationMs },
     })
     if (!response.ok) throw new Error(`judge returned HTTP ${response.status}`)
     const text = responseText(responseBody)
@@ -320,16 +322,19 @@ export function createChatMessageHook(
     if (task.length === 0) return
 
     let selected = fallback
+    const routeStart = Date.now()
     try {
       const context = { sessionID: input.sessionID, messageID: input.messageID }
       const tierID = await judgeTask(task, options, fetchImpl, logger, context)
+      const routeDurationMs = Date.now() - routeStart
       selected = options.tiers.find((tier) => tier.id === tierID) ?? fallback
       await writeLog(logger, {
         level: "info",
         message: "judge selected tier",
-        extra: { ...context, tier: selected.id, target: selected.target },
+        extra: { ...context, tier: selected.id, target: selected.target, routeDurationMs },
       })
     } catch (error) {
+      const routeDurationMs = Date.now() - routeStart
       selected = fallback
       await writeLog(logger, {
         level: "warn",
@@ -340,6 +345,7 @@ export function createChatMessageHook(
           error: errorMessage(error),
           tier: fallback.id,
           target: fallback.target,
+          routeDurationMs,
         },
       })
     }
